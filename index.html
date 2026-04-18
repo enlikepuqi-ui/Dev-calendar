@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
+<title>新品开发日历</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=DM+Sans:wght@400;500;700&display=swap');
+:root{
+  --bg:#faf9f7;--sf:#fff;--sf2:#f5f3ef;--bd:#e5e0d8;
+  --tx:#2d2a26;--tx2:#8a857d;--tx3:#c2bdb5;
+  --today:#fff8e7;--todayBd:#e8c34a;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans SC','DM Sans',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;-webkit-tap-highlight-color:transparent;overflow-x:hidden}
+input,button,select,textarea{font-family:inherit}
+
+.app{max-width:900px;margin:0 auto;padding:24px 16px 100px}
+
+/* header */
+.hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+.hdr h1{font-size:18px;font-weight:700;letter-spacing:1px}
+.hdr-nav{display:flex;align-items:center;gap:6px}
+.nbtn{width:32px;height:32px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--tx2);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center}
+.nbtn:active{transform:scale(.93)}
+.month-label{font-family:'DM Sans',sans-serif;font-size:20px;font-weight:700;min-width:140px;text-align:center}
+.today-btn{padding:5px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--tx2);font-size:12px;cursor:pointer}
+.today-btn:hover{background:var(--todayBd);color:#fff;border-color:var(--todayBd)}
+
+/* year overview toggle */
+.view-bar{display:flex;gap:6px;margin-bottom:14px}
+.vbtn{padding:6px 14px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--tx2);font-size:12px;cursor:pointer}
+.vbtn.on{background:var(--tx);color:#fff;border-color:var(--tx)}
+
+/* calendar grid */
+.cal-head{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:2px}
+.cal-head div{text-align:center;font-size:11px;color:var(--tx2);padding:6px 0;font-weight:500}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cal-cell{min-height:80px;background:var(--sf);border:1px solid var(--bd);border-radius:6px;padding:4px;cursor:pointer;transition:all .15s;position:relative;overflow:hidden}
+.cal-cell:hover{border-color:var(--tx3);box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.cal-cell.other{background:var(--sf2);opacity:.4}
+.cal-cell.today{background:var(--today);border-color:var(--todayBd)}
+.cal-day{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;margin-bottom:2px;line-height:1}
+.cal-day.today{color:var(--todayBd)}
+.cal-events{display:flex;flex-direction:column;gap:1px}
+.cal-ev{font-size:9px;padding:2px 4px;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff;font-weight:500;line-height:1.3;cursor:pointer}
+.cal-ev:hover{opacity:.85}
+.cal-more{font-size:9px;color:var(--tx2);padding:1px 4px;cursor:pointer}
+
+/* plan bar colors */
+.pc-dev{background:#5b7bb4}
+.pc-design{background:#805ad5}
+.pc-promo{background:#d69e2e}
+.pc-sale{background:#38a169}
+.pc-event{background:#e53e3e}
+.pc-rest{background:#a0aec0}
+.pc-other{background:#718096}
+
+/* legend */
+.legend{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.leg-item{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--tx2)}
+.leg-dot{width:10px;height:10px;border-radius:3px}
+
+/* modal */
+.modal-bg{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);z-index:300;display:none;align-items:flex-end;justify-content:center}
+.modal-bg.show{display:flex}
+.modal{background:var(--sf);border-radius:18px 18px 0 0;padding:20px 18px 28px;width:100%;max-width:560px;max-height:85vh;overflow-y:auto}
+.modal h3{font-size:15px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+.mcl{width:28px;height:28px;border:none;background:var(--sf2);border-radius:8px;cursor:pointer;font-size:13px;color:var(--tx2)}
+.fg{margin-bottom:10px}
+.fg label{display:block;font-size:12px;color:var(--tx2);margin-bottom:3px}
+.fg input,.fg select,.fg textarea{width:100%;padding:9px 11px;border:1px solid var(--bd);border-radius:8px;font-size:13px;color:var(--tx);background:var(--sf2);outline:none}
+.fg input:focus,.fg textarea:focus{border-color:var(--tx)}
+.fg textarea{resize:none;min-height:50px}
+.fr{display:flex;gap:8px}
+.fr .fg{flex:1}
+.sbmt{width:100%;padding:11px;border-radius:10px;border:none;background:var(--tx);color:#fff;font-size:14px;font-weight:600;cursor:pointer;margin-top:6px}
+.sbmt:active{transform:scale(.98)}
+.dbtn{width:100%;padding:9px;border-radius:10px;border:1px solid #e53e3e;background:none;color:#e53e3e;font-size:13px;cursor:pointer;margin-top:6px}
+
+/* phase select */
+.phase-grid{display:flex;gap:5px;flex-wrap:wrap}
+.phase-opt{padding:5px 10px;border-radius:6px;border:1px solid var(--bd);font-size:11px;cursor:pointer;color:#fff;font-weight:500;transition:.15s;opacity:.6}
+.phase-opt.sel{opacity:1;box-shadow:0 0 0 2px var(--tx)}
+
+/* day detail panel */
+.day-events{margin-top:10px}
+.day-ev{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--sf2);border-radius:8px;margin-bottom:6px;cursor:pointer}
+.day-ev:hover{background:var(--bd)}
+.day-ev-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.day-ev-info{flex:1;min-width:0}
+.day-ev-name{font-size:13px;font-weight:500}
+.day-ev-date{font-size:10px;color:var(--tx2)}
+
+/* year overview */
+.year-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.year-month{background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px;cursor:pointer;transition:.15s}
+.year-month:hover{border-color:var(--tx3);box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.ym-title{font-size:13px;font-weight:600;margin-bottom:6px;display:flex;justify-content:space-between}
+.ym-count{font-size:11px;color:var(--tx2);font-weight:400}
+.ym-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px}
+.ym-cell{width:100%;aspect-ratio:1;border-radius:2px;font-size:7px;display:flex;align-items:center;justify-content:center;color:var(--tx3)}
+.ym-cell.has{background:var(--tx);color:#fff;font-size:6px;border-radius:2px}
+.ym-cell.today{outline:2px solid var(--todayBd);border-radius:2px}
+
+.hidden{display:none}
+.empty{text-align:center;padding:30px;color:var(--tx3);font-size:13px}
+
+@media(max-width:500px){
+  .cal-cell{min-height:56px;padding:3px}
+  .cal-day{font-size:11px}
+  .cal-ev{font-size:8px;padding:1px 3px}
+  .year-grid{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="hdr">
+    <h1>📅 新品开发日历</h1>
+    <div class="hdr-nav">
+      <button class="nbtn" onclick="navMonth(-1)">‹</button>
+      <div class="month-label" id="monthLabel"></div>
+      <button class="nbtn" onclick="navMonth(1)">›</button>
+      <button class="today-btn" onclick="goToday()">今天</button>
+    </div>
+  </div>
+
+  <div class="view-bar">
+    <button class="vbtn on" id="vMonth" onclick="setView('month')">月视图</button>
+    <button class="vbtn" id="vYear" onclick="setView('year')">年总览</button>
+  </div>
+
+  <div class="legend">
+    <div class="leg-item"><div class="leg-dot pc-design"></div>设计</div>
+    <div class="leg-item"><div class="leg-dot pc-dev"></div>开发/打样</div>
+    <div class="leg-item"><div class="leg-dot pc-promo"></div>宣传</div>
+    <div class="leg-item"><div class="leg-dot pc-sale"></div>上架/销售</div>
+    <div class="leg-item"><div class="leg-dot pc-event"></div>展会/活动</div>
+    <div class="leg-item"><div class="leg-dot pc-rest"></div>休息</div>
+    <div class="leg-item"><div class="leg-dot pc-other"></div>其他</div>
+  </div>
+
+  <div id="monthView">
+    <div class="cal-head">
+      <div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div><div>日</div>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+  </div>
+
+  <div id="yearView" class="hidden"></div>
+</div>
+
+<!-- Add/Edit Plan Modal -->
+<div class="modal-bg" id="planModal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <h3><span id="modalTitle">添加计划</span><button class="mcl" onclick="closeModal()">✕</button></h3>
+    <div class="fg">
+      <label>计划名称</label>
+      <input type="text" id="pName" placeholder="如：琪露诺新款挂件">
+    </div>
+    <div class="fr">
+      <div class="fg"><label>开始日期</label><input type="date" id="pStart"></div>
+      <div class="fg"><label>结束日期</label><input type="date" id="pEnd"></div>
+    </div>
+    <div class="fg">
+      <label>阶段</label>
+      <div class="phase-grid" id="phaseGrid"></div>
+    </div>
+    <div class="fg">
+      <label>备注（选填）</label>
+      <textarea id="pNote" placeholder="补充说明..."></textarea>
+    </div>
+    <button class="sbmt" id="submitBtn" onclick="savePlan()">添加</button>
+    <button class="dbtn hidden" id="delBtn" onclick="delPlan()">删除此计划</button>
+  </div>
+</div>
+
+<!-- Day Detail Modal -->
+<div class="modal-bg" id="dayModal" onclick="if(event.target===this)closeDayModal()">
+  <div class="modal">
+    <h3><span id="dayTitle"></span><button class="mcl" onclick="closeDayModal()">✕</button></h3>
+    <button class="sbmt" style="margin-bottom:10px;background:#5b7bb4" onclick="closeDayModal();openModal(dayModalDate)">+ 添加计划</button>
+    <div id="dayEvents"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" style="position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--tx);color:#fff;padding:8px 18px;border-radius:10px;font-size:13px;z-index:400;transition:.3s;opacity:0;pointer-events:none"></div>
+
+<script>
+const SK='dev_calendar_v2';
+const PHASES=[
+  {id:'design',name:'设计',cls:'pc-design'},
+  {id:'dev',name:'开发/打样',cls:'pc-dev'},
+  {id:'promo',name:'宣传',cls:'pc-promo'},
+  {id:'sale',name:'上架/销售',cls:'pc-sale'},
+  {id:'event',name:'展会/活动',cls:'pc-event'},
+  {id:'rest',name:'休息',cls:'pc-rest'},
+  {id:'other',name:'其他',cls:'pc-other'}
+];
+
+let D={plans:[]};
+let curYear,curMonth,curView='month';
+let editId=null,selPhase='design';
+let dayModalDate='';
+
+const $=id=>document.getElementById(id);
+function load(){try{const s=localStorage.getItem(SK);if(s)D=JSON.parse(s)}catch(e){}}
+function save(){try{localStorage.setItem(SK,JSON.stringify(D))}catch(e){}}
+function toast(m){const t=$('toast');t.textContent=m;t.style.opacity='1';t.style.transform='translateX(-50%) translateY(0)';setTimeout(()=>{t.style.opacity='0';t.style.transform='translateX(-50%) translateY(60px)'},2000)}
+
+function init(){const now=new Date();curYear=now.getFullYear();curMonth=now.getMonth();render()}
+function navMonth(n){curMonth+=n;if(curMonth>11){curMonth=0;curYear++}else if(curMonth<0){curMonth=11;curYear--}render()}
+function goToday(){const now=new Date();curYear=now.getFullYear();curMonth=now.getMonth();render()}
+function setView(v){curView=v;$('vMonth').classList.toggle('on',v==='month');$('vYear').classList.toggle('on',v==='year');$('monthView').classList.toggle('hidden',v!=='month');$('yearView').classList.toggle('hidden',v!=='year');render()}
+
+function dateStr(y,m,d){return y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0')}
+function todayStr(){const n=new Date();return dateStr(n.getFullYear(),n.getMonth(),n.getDate())}
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function phaseInfo(id){return PHASES.find(p=>p.id===id)||PHASES[6]}
+
+function plansOnDate(ds){
+  return D.plans.filter(p=>ds>=p.start&&ds<=p.end);
+}
+
+// === MONTH VIEW ===
+function renderMonth(){
+  const today=todayStr();
+  $('monthLabel').textContent=curYear+'年'+(curMonth+1)+'月';
+
+  const firstDay=new Date(curYear,curMonth,1).getDay();
+  const startOff=(firstDay===0?6:firstDay-1);
+  const daysInMonth=new Date(curYear,curMonth+1,0).getDate();
+  const prevDays=new Date(curYear,curMonth,0).getDate();
+
+  let cells=[];
+  // prev month padding
+  for(let i=startOff-1;i>=0;i--){
+    const d=prevDays-i;
+    const m=curMonth===0?11:curMonth-1;
+    const y=curMonth===0?curYear-1:curYear;
+    cells.push({day:d,ds:dateStr(y,m,d),other:true});
+  }
+  // this month
+  for(let d=1;d<=daysInMonth;d++){
+    cells.push({day:d,ds:dateStr(curYear,curMonth,d),other:false,today:dateStr(curYear,curMonth,d)===today});
+  }
+  // next month padding
+  const remain=7-(cells.length%7);
+  if(remain<7){
+    for(let d=1;d<=remain;d++){
+      const m=curMonth===11?0:curMonth+1;
+      const y=curMonth===11?curYear+1:curYear;
+      cells.push({day:d,ds:dateStr(y,m,d),other:true});
+    }
+  }
+
+  $('calGrid').innerHTML=cells.map(c=>{
+    const events=plansOnDate(c.ds);
+    const cls='cal-cell'+(c.other?' other':'')+(c.today?' today':'');
+    let evHtml='';
+    const show=events.slice(0,3);
+    show.forEach(e=>{
+      const ph=phaseInfo(e.phase);
+      evHtml+='<div class="cal-ev '+ph.cls+'" onclick="event.stopPropagation();editPlan('+e.id+')" title="'+esc(e.name)+'">'+esc(e.name)+'</div>';
+    });
+    if(events.length>3)evHtml+='<div class="cal-more">+' +(events.length-3)+'</div>';
+    return '<div class="'+cls+'" onclick="openDayDetail(\''+c.ds+'\')"><div class="cal-day'+(c.today?' today':'')+'">'+c.day+'</div><div class="cal-events">'+evHtml+'</div></div>';
+  }).join('');
+}
+
+// === YEAR VIEW ===
+function renderYear(){
+  const today=todayStr();
+  let h='<div class="year-grid">';
+  for(let m=0;m<12;m++){
+    const daysInMonth=new Date(curYear,m+1,0).getDate();
+    const firstDay=new Date(curYear,m,1).getDay();
+    const startOff=(firstDay===0?6:firstDay-1);
+
+    // count events this month
+    let evCount=0;
+    for(let d=1;d<=daysInMonth;d++){
+      if(plansOnDate(dateStr(curYear,m,d)).length)evCount++;
+    }
+
+    h+='<div class="year-month" onclick="curMonth='+m+';setView(\'month\')">';
+    h+='<div class="ym-title">'+(m+1)+'月 <span class="ym-count">'+evCount+'天有计划</span></div>';
+    h+='<div class="ym-grid">';
+    // weekday headers
+    for(let w=0;w<7;w++)h+='<div class="ym-cell" style="color:var(--tx3);font-size:7px;font-weight:600">'+['一','二','三','四','五','六','日'][w]+'</div>';
+    // padding
+    for(let i=0;i<startOff;i++)h+='<div class="ym-cell"></div>';
+    // days
+    for(let d=1;d<=daysInMonth;d++){
+      const ds=dateStr(curYear,m,d);
+      const has=plansOnDate(ds).length>0;
+      const isT=ds===today;
+      h+='<div class="ym-cell'+(has?' has':'')+(isT?' today':'')+'">'+d+'</div>';
+    }
+    h+='</div></div>';
+  }
+  h+='</div>';
+  $('yearView').innerHTML=h;
+}
+
+// === DAY DETAIL ===
+function openDayDetail(ds){
+  dayModalDate=ds;
+  const d=new Date(ds);
+  $('dayTitle').textContent=(d.getMonth()+1)+'月'+d.getDate()+'日';
+  const events=plansOnDate(ds);
+  if(!events.length){
+    $('dayEvents').innerHTML='<div class="empty">这天还没有计划</div>';
+  }else{
+    $('dayEvents').innerHTML=events.map(e=>{
+      const ph=phaseInfo(e.phase);
+      return '<div class="day-ev" onclick="closeDayModal();editPlan('+e.id+')"><div class="day-ev-dot '+ph.cls+'"></div><div class="day-ev-info"><div class="day-ev-name">'+esc(e.name)+'</div><div class="day-ev-date">'+ph.name+' · '+e.start+' → '+e.end+(e.note?' · '+esc(e.note):'')+'</div></div></div>';
+    }).join('');
+  }
+  $('dayModal').classList.add('show');
+}
+function closeDayModal(){$('dayModal').classList.remove('show')}
+
+// === PLAN MODAL ===
+function openModal(defaultDate){
+  editId=null;selPhase='design';
+  $('modalTitle').textContent='添加计划';
+  $('submitBtn').textContent='添加';
+  $('delBtn').classList.add('hidden');
+  $('pName').value='';$('pNote').value='';
+  const ds=defaultDate||todayStr();
+  $('pStart').value=ds;$('pEnd').value=ds;
+  renderPhases();
+  $('planModal').classList.add('show');
+}
+function editPlan(id){
+  const p=D.plans.find(x=>x.id===id);if(!p)return;
+  editId=id;selPhase=p.phase;
+  $('modalTitle').textContent='编辑计划';
+  $('submitBtn').textContent='保存';
+  $('delBtn').classList.remove('hidden');
+  $('pName').value=p.name;$('pStart').value=p.start;$('pEnd').value=p.end;$('pNote').value=p.note||'';
+  renderPhases();
+  $('planModal').classList.add('show');
+}
+function closeModal(){$('planModal').classList.remove('show');editId=null}
+
+function renderPhases(){
+  $('phaseGrid').innerHTML=PHASES.map(p=>'<div class="phase-opt '+p.cls+(selPhase===p.id?' sel':'')+'" onclick="selPhase=\''+p.id+'\';renderPhases()">'+p.name+'</div>').join('');
+}
+
+function savePlan(){
+  const name=$('pName').value.trim();
+  const start=$('pStart').value;
+  const end=$('pEnd').value;
+  const note=$('pNote').value.trim();
+  if(!name){toast('请输入计划名称');return}
+  if(!start||!end){toast('请选择日期');return}
+  if(end<start){toast('结束日期不能早于开始日期');return}
+
+  if(editId){
+    D.plans=D.plans.map(x=>x.id===editId?{...x,name,start,end,phase:selPhase,note}:x);
+    toast('已更新');
+  }else{
+    D.plans.push({id:Date.now(),name,start,end,phase:selPhase,note});
+    toast('已添加「'+name+'」');
+  }
+  save();closeModal();render();
+}
+
+function delPlan(){
+  if(!editId)return;
+  const p=D.plans.find(x=>x.id===editId);
+  if(!p||!confirm('删除「'+p.name+'」？'))return;
+  D.plans=D.plans.filter(x=>x.id!==editId);
+  save();closeModal();render();toast('已删除');
+}
+
+function render(){
+  if(curView==='month')renderMonth();
+  else renderYear();
+}
+
+load();init();
+</script>
+</body>
+</html>
