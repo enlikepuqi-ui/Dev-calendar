@@ -130,6 +130,7 @@ input,button,select,textarea{font-family:inherit}
     <button class="vbtn on" id="vMonth" onclick="setView('month')">月视图</button>
     <button class="vbtn" id="vYear" onclick="setView('year')">年总览</button>
     <button class="vbtn" style="margin-left:auto;background:var(--todayBd);color:#fff;border-color:var(--todayBd)" onclick="openPreset()">⚡ 快速预设</button>
+    <button class="vbtn" style="color:#e53e3e;border-color:#e53e3e" onclick="clearAll()">🗑️ 清空</button>
   </div>
 
   <div class="legend">
@@ -343,10 +344,18 @@ function openDayDetail(ds){
   if(!events.length){
     $('dayEvents').innerHTML='<div class="empty">这天还没有计划</div>';
   }else{
-    $('dayEvents').innerHTML=events.map(e=>{
+    let evHtml=events.map(e=>{
       const ph=phaseInfo(e.phase);
       return '<div class="day-ev" onclick="closeDayModal();editPlan('+e.id+')"><div class="day-ev-dot '+ph.cls+'"></div><div class="day-ev-info"><div class="day-ev-name">'+esc(e.name)+'</div><div class="day-ev-date">'+ph.name+' · '+e.start+' → '+e.end+(e.note?' · '+esc(e.note):'')+'</div></div></div>';
     }).join('');
+    // 如果有预设组，显示删除整组按钮
+    const groups=[...new Set(events.filter(e=>e.group).map(e=>e.group))];
+    groups.forEach(gid=>{
+      const gPlans=D.plans.filter(p=>p.group===gid);
+      const gName=gPlans[0]?.groupName||'预设';
+      evHtml+='<button onclick="closeDayModal();clearGroup('+gid+')" style="width:100%;padding:8px;border-radius:8px;border:1px solid #e53e3e;background:none;color:#e53e3e;font-size:12px;cursor:pointer;margin-top:6px">🗑️ 删除「'+esc(gName)+'」整组预设 ('+gPlans.length+'条)</button>';
+    });
+    $('dayEvents').innerHTML=evHtml;
   }
   $('dayModal').classList.add('show');
 }
@@ -488,16 +497,31 @@ function applyPreset(){
   if(!items.length){toast('请选择一个模板');return}
 
   let count=0;
+  const groupId=Date.now();
   items.forEach(it=>{
     const start=offsetDate(date,it.offset);
     const end=offsetDate(date,it.offset+it.dur-1);
-    D.plans.push({id:Date.now()+(count++),name:name+it.suffix,start,end,phase:it.phase,note:''});
+    D.plans.push({id:Date.now()+(count++),name:name+it.suffix,start,end,phase:it.phase,note:'',group:groupId,groupName:name});
   });
   save();closePreset();
-  // jump to the target month
   const td=new Date(date);curYear=td.getFullYear();curMonth=td.getMonth();
   render();
   toast('已生成 '+count+' 条计划');
+}
+
+function clearAll(){
+  if(!D.plans.length){toast('没有计划可清空');return}
+  if(!confirm('⚠️ 清空所有计划？不可恢复！'))return;
+  D.plans=[];save();render();toast('已全部清空');
+}
+
+function clearGroup(groupId){
+  const plans=D.plans.filter(p=>p.group===groupId);
+  if(!plans.length)return;
+  const name=plans[0].groupName||'该预设';
+  if(!confirm('删除「'+name+'」的全部 '+plans.length+' 条计划？'))return;
+  D.plans=D.plans.filter(p=>p.group!==groupId);
+  save();render();toast('已删除「'+name+'」');
 }
 
 function render(){
