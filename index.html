@@ -129,6 +129,7 @@ input,button,select,textarea{font-family:inherit}
   <div class="view-bar">
     <button class="vbtn on" id="vMonth" onclick="setView('month')">月视图</button>
     <button class="vbtn" id="vYear" onclick="setView('year')">年总览</button>
+    <button class="vbtn" style="margin-left:auto;background:var(--todayBd);color:#fff;border-color:var(--todayBd)" onclick="openPreset()">⚡ 快速预设</button>
   </div>
 
   <div class="legend">
@@ -182,6 +183,35 @@ input,button,select,textarea{font-family:inherit}
     <h3><span id="dayTitle"></span><button class="mcl" onclick="closeDayModal()">✕</button></h3>
     <button class="sbmt" style="margin-bottom:10px;background:#5b7bb4" onclick="closeDayModal();openModal(dayModalDate)">+ 添加计划</button>
     <div id="dayEvents"></div>
+  </div>
+</div>
+
+<!-- Preset Template Modal -->
+<div class="modal-bg" id="presetModal" onclick="if(event.target===this)closePreset()">
+  <div class="modal">
+    <h3><span>⚡ 快速预设</span><button class="mcl" onclick="closePreset()">✕</button></h3>
+    <div class="fg">
+      <label>选择模板</label>
+      <select id="tplSelect" onchange="renderTplPreview()" style="width:100%;padding:9px 11px;border:1px solid var(--bd);border-radius:8px;font-size:13px;color:var(--tx);background:var(--sf2)">
+        <option value="convention">🎪 展会参展</option>
+        <option value="newproduct">🛍️ 新品上架</option>
+        <option value="doujin">📖 同人本制作</option>
+        <option value="custom">✏️ 自定义（空模板）</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label>活动/产品名称</label>
+      <input type="text" id="tplName" placeholder="如：例大祭23、琪露诺新挂件">
+    </div>
+    <div class="fg">
+      <label>目标日期（展会日/上架日）</label>
+      <input type="date" id="tplDate">
+    </div>
+    <div class="fg">
+      <label>预览生成的计划</label>
+      <div id="tplPreview" style="max-height:220px;overflow-y:auto"></div>
+    </div>
+    <button class="sbmt" onclick="applyPreset()">一键生成</button>
   </div>
 </div>
 
@@ -375,6 +405,99 @@ function delPlan(){
   if(!p||!confirm('删除「'+p.name+'」？'))return;
   D.plans=D.plans.filter(x=>x.id!==editId);
   save();closeModal();render();toast('已删除');
+}
+
+// === PRESET TEMPLATES ===
+const TEMPLATES={
+  convention:[
+    {offset:-60,dur:1,phase:'other',suffix:' - 报名'},
+    {offset:-45,dur:1,phase:'other',suffix:' - 确认摊位'},
+    {offset:-30,dur:14,phase:'design',suffix:' - 新品设计'},
+    {offset:-21,dur:7,phase:'dev',suffix:' - 打样/备货'},
+    {offset:-14,dur:1,phase:'other',suffix:' - 预订车票/酒店'},
+    {offset:-10,dur:7,phase:'promo',suffix:' - 预热宣传'},
+    {offset:-3,dur:1,phase:'other',suffix:' - 打包发货/物料准备'},
+    {offset:-1,dur:1,phase:'other',suffix:' - 出发/布展'},
+    {offset:0,dur:1,phase:'event',suffix:' - 展会当天'},
+    {offset:1,dur:2,phase:'sale',suffix:' - 展后线上返场'}
+  ],
+  newproduct:[
+    {offset:-45,dur:7,phase:'design',suffix:' - 设计定稿'},
+    {offset:-38,dur:14,phase:'dev',suffix:' - 打样/生产'},
+    {offset:-24,dur:3,phase:'other',suffix:' - 验收/质检'},
+    {offset:-21,dur:7,phase:'promo',suffix:' - 预热宣传'},
+    {offset:-14,dur:7,phase:'promo',suffix:' - 商品拍摄/详情页'},
+    {offset:-3,dur:3,phase:'sale',suffix:' - 上架准备'},
+    {offset:0,dur:1,phase:'sale',suffix:' - 正式上架'},
+    {offset:1,dur:7,phase:'promo',suffix:' - 首发推广'}
+  ],
+  doujin:[
+    {offset:-90,dur:14,phase:'design',suffix:' - 企划/大纲'},
+    {offset:-76,dur:30,phase:'dev',suffix:' - 原稿制作'},
+    {offset:-46,dur:14,phase:'design',suffix:' - 排版/校对'},
+    {offset:-32,dur:7,phase:'other',suffix:' - 送印刷'},
+    {offset:-14,dur:1,phase:'other',suffix:' - 确认印刷成品'},
+    {offset:-10,dur:7,phase:'promo',suffix:' - 宣传/预售'},
+    {offset:0,dur:1,phase:'event',suffix:' - 发售日'}
+  ],
+  custom:[]
+};
+
+function offsetDate(base,days){
+  const d=new Date(base);d.setDate(d.getDate()+days);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function openPreset(){
+  $('tplName').value='';
+  $('tplDate').value=todayStr();
+  renderTplPreview();
+  $('presetModal').classList.add('show');
+}
+function closePreset(){$('presetModal').classList.remove('show')}
+
+function renderTplPreview(){
+  const tpl=$('tplSelect').value;
+  const date=$('tplDate').value||todayStr();
+  const name=$('tplName').value.trim()||'未命名';
+  const items=TEMPLATES[tpl]||[];
+
+  if(!items.length){
+    $('tplPreview').innerHTML='<div class="empty">自定义模板不生成预设，请用普通添加</div>';
+    return;
+  }
+
+  $('tplPreview').innerHTML=items.map(it=>{
+    const ph=phaseInfo(it.phase);
+    const start=offsetDate(date,it.offset);
+    const end=offsetDate(date,it.offset+it.dur-1);
+    const startD=new Date(start);
+    const endD=new Date(end);
+    const label=(startD.getMonth()+1)+'/'+startD.getDate()+(it.dur>1?' → '+(endD.getMonth()+1)+'/'+endD.getDate():'');
+    return '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--sf2);border-radius:6px;margin-bottom:4px;font-size:12px"><div style="width:8px;height:8px;border-radius:2px;flex-shrink:0" class="'+ph.cls+'"></div><span style="flex:1">'+esc(name+it.suffix)+'</span><span style="color:var(--tx2);font-size:10px;white-space:nowrap">'+label+'</span></div>';
+  }).join('');
+}
+
+function applyPreset(){
+  const tpl=$('tplSelect').value;
+  const date=$('tplDate').value;
+  const name=$('tplName').value.trim();
+  if(!name){toast('请输入名称');return}
+  if(!date){toast('请选择目标日期');return}
+  const items=TEMPLATES[tpl]||[];
+  if(!items.length){toast('请选择一个模板');return}
+
+  let count=0;
+  items.forEach(it=>{
+    const start=offsetDate(date,it.offset);
+    const end=offsetDate(date,it.offset+it.dur-1);
+    D.plans.push({id:Date.now()+(count++),name:name+it.suffix,start,end,phase:it.phase,note:''});
+  });
+  save();closePreset();
+  // jump to the target month
+  const td=new Date(date);curYear=td.getFullYear();curMonth=td.getMonth();
+  render();
+  toast('已生成 '+count+' 条计划');
 }
 
 function render(){
