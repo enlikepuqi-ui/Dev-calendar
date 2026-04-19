@@ -152,6 +152,8 @@ input,button,select,textarea{font-family:inherit}
     <div class="leg-item"><div class="leg-dot pc-other"></div>其他</div>
   </div>
 
+  <div id="monthStats" style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap"></div>
+
   <div id="monthView">
     <div class="cal-head">
       <div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div><div>日</div>
@@ -277,9 +279,44 @@ function renderMonth(){
   const today=todayStr();
   $('monthLabel').textContent=curYear+'年'+(curMonth+1)+'月';
 
+  // 月度统计 + 近7天提醒
+  const daysInMonth=new Date(curYear,curMonth+1,0).getDate();
+  let monthPlans=new Set();
+  let monthGroups=new Set();
+  for(let d=1;d<=daysInMonth;d++){
+    plansOnDate(dateStr(curYear,curMonth,d)).forEach(p=>{
+      monthPlans.add(p.id);
+      if(p.groupName)monthGroups.add(p.groupName);
+    });
+  }
+
+  // 近7天的事项
+  const upcoming=[];
+  for(let i=0;i<7;i++){
+    const ds=offsetDate(today,i);
+    plansOnDate(ds).forEach(p=>{
+      if(!upcoming.some(u=>u.id===p.id)){
+        const dd=new Date(ds);
+        upcoming.push({...p,displayDate:(dd.getMonth()+1)+'/'+dd.getDate()});
+      }
+    });
+  }
+
+  let statsH='';
+  statsH+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--tx2)">本月 <b style="color:var(--tx)">'+monthPlans.size+'</b> 条计划'+(monthGroups.size?' · '+monthGroups.size+'个项目':'')+'</div>';
+  if(upcoming.length){
+    statsH+='<div style="flex:1;background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--tx2);min-width:200px">📌 近7天：';
+    statsH+=upcoming.slice(0,4).map(u=>{
+      const c=u.groupColor||'var(--tx2)';
+      return '<span style="color:'+c+';font-weight:500">'+u.displayDate+' '+esc(u.name.length>12?u.name.slice(0,12)+'…':u.name)+'</span>';
+    }).join(' · ');
+    if(upcoming.length>4)statsH+=' · <span style="color:var(--tx3)">+' +(upcoming.length-4)+'</span>';
+    statsH+='</div>';
+  }
+  $('monthStats').innerHTML=statsH;
+
   const firstDay=new Date(curYear,curMonth,1).getDay();
   const startOff=(firstDay===0?6:firstDay-1);
-  const daysInMonth=new Date(curYear,curMonth+1,0).getDate();
   const prevDays=new Date(curYear,curMonth,0).getDate();
 
   let cells=[];
@@ -442,14 +479,13 @@ function delPlan(){
 const TEMPLATES={
   convention:[
     {offset:-60,dur:1,phase:'other',suffix:' - 报名'},
-    {offset:-30,dur:1,phase:'other',suffix:' - 确认摊位（第一次）'},
-    {offset:-15,dur:1,phase:'other',suffix:' - 确认摊位（第二次）'},
+    {offset:-30,dur:1,phase:'other',suffix:' - 确认摊位(1)'},
+    {offset:-15,dur:1,phase:'other',suffix:' - 确认摊位(2)'},
     {offset:-15,dur:1,phase:'dev',suffix:' - 开始备货'},
-    {offset:-7,dur:1,phase:'promo',suffix:' - 宣传（第一波）'},
+    {offset:-7,dur:1,phase:'promo',suffix:' - 宣传(1)'},
     {offset:-5,dur:1,phase:'other',suffix:' - 打包寄出物料'},
-    {offset:-2,dur:1,phase:'promo',suffix:' - 宣传（第二波）'},
-    {offset:-1,dur:1,phase:'promo',suffix:' - 宣传（最后一波）'},
-    {offset:-1,dur:1,phase:'other',suffix:' - 出发'},
+    {offset:-2,dur:1,phase:'promo',suffix:' - 宣传(2)'},
+    {offset:-1,dur:1,phase:'promo',suffix:' - 宣传(3)'},
     {offset:0,dur:1,phase:'event',suffix:' - 展会当天'}
   ],
   newproduct:[
@@ -457,18 +493,18 @@ const TEMPLATES={
     {offset:-30,dur:1,phase:'dev',suffix:' - 下单打样'},
     {offset:-20,dur:1,phase:'other',suffix:' - 验收样品'},
     {offset:-14,dur:1,phase:'dev',suffix:' - 确认量产'},
-    {offset:-7,dur:1,phase:'promo',suffix:' - 商品拍摄/详情页'},
+    {offset:-7,dur:1,phase:'promo',suffix:' - 拍摄/详情页'},
     {offset:-3,dur:1,phase:'promo',suffix:' - 预热宣传'},
     {offset:-1,dur:1,phase:'sale',suffix:' - 上架准备'},
     {offset:0,dur:1,phase:'sale',suffix:' - 正式上架'}
   ],
   doujin:[
-    {offset:-90,dur:1,phase:'design',suffix:' - 开始企划'},
+    {offset:-90,dur:1,phase:'design',suffix:' - 企划'},
     {offset:-60,dur:1,phase:'dev',suffix:' - 原稿截止'},
     {offset:-45,dur:1,phase:'design',suffix:' - 排版完成'},
-    {offset:-30,dur:1,phase:'other',suffix:' - 送印刷'},
-    {offset:-14,dur:1,phase:'other',suffix:' - 确认印刷成品'},
-    {offset:-7,dur:1,phase:'promo',suffix:' - 开始宣传/预售'},
+    {offset:-30,dur:1,phase:'other',suffix:' - 送印'},
+    {offset:-14,dur:1,phase:'other',suffix:' - 确认成品'},
+    {offset:-7,dur:1,phase:'promo',suffix:' - 宣传/预售'},
     {offset:0,dur:1,phase:'event',suffix:' - 发售日'}
   ],
   custom:[]
