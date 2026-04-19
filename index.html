@@ -239,10 +239,19 @@ const PHASES=[
   {id:'other',name:'其他',cls:'pc-other'}
 ];
 
+const GROUP_COLORS=['#e53e3e','#3182ce','#38a169','#805ad5','#d69e2e','#dd6b20','#319795','#d53f8c','#5b7bb4','#e07a5f'];
+
 let D={plans:[]};
 let curYear,curMonth,curView='month';
 let editId=null,selPhase='design';
 let dayModalDate='';
+
+function nextGroupColor(){
+  const usedColors=(D.plans||[]).filter(p=>p.groupColor).map(p=>p.groupColor);
+  const usedSet=new Set(usedColors);
+  for(const c of GROUP_COLORS){if(!usedSet.has(c))return c}
+  return GROUP_COLORS[Math.floor(Math.random()*GROUP_COLORS.length)];
+}
 
 const $=id=>document.getElementById(id);
 function load(){try{const s=localStorage.getItem(SK);if(s)D=JSON.parse(s)}catch(e){}}
@@ -302,7 +311,9 @@ function renderMonth(){
     const show=events.slice(0,5);
     show.forEach(e=>{
       const ph=phaseInfo(e.phase);
-      evHtml+='<div class="cal-ev '+ph.cls+'" onclick="event.stopPropagation();editPlan('+e.id+')" title="'+esc(e.name)+'">'+esc(e.name)+'</div>';
+      const bgStyle=e.groupColor?'background:'+e.groupColor:'';
+      const cls=e.groupColor?'cal-ev':'cal-ev '+ph.cls;
+      evHtml+='<div class="'+cls+'" style="'+bgStyle+'" onclick="event.stopPropagation();editPlan('+e.id+')" title="'+esc(e.name)+'">'+esc(e.name)+'</div>';
     });
     if(events.length>5)evHtml+='<div class="cal-more">+' +(events.length-5)+'</div>';
     return '<div class="'+cls+'" onclick="openDayDetail(\''+c.ds+'\')"><div class="cal-day'+(c.today?' today':'')+'">'+c.day+'</div><div class="cal-events">'+evHtml+'</div></div>';
@@ -355,7 +366,9 @@ function openDayDetail(ds){
   }else{
     let evHtml=events.map(e=>{
       const ph=phaseInfo(e.phase);
-      return '<div class="day-ev" onclick="closeDayModal();editPlan('+e.id+')"><div class="day-ev-dot '+ph.cls+'"></div><div class="day-ev-info"><div class="day-ev-name">'+esc(e.name)+'</div><div class="day-ev-date">'+ph.name+' · '+e.start+' → '+e.end+(e.note?' · '+esc(e.note):'')+'</div></div></div>';
+      const dotStyle=e.groupColor?'style="background:'+e.groupColor+'"':'';
+      const dotCls=e.groupColor?'day-ev-dot':'day-ev-dot '+ph.cls;
+      return '<div class="day-ev" onclick="closeDayModal();editPlan('+e.id+')"><div class="'+dotCls+'" '+dotStyle+'></div><div class="day-ev-info"><div class="day-ev-name">'+esc(e.name)+'</div><div class="day-ev-date">'+ph.name+(e.groupName?' · '+esc(e.groupName):'')+' · '+e.start+' → '+e.end+(e.note?' · '+esc(e.note):'')+'</div></div></div>';
     }).join('');
     // 如果有预设组，显示删除整组按钮
     const groups=[...new Set(events.filter(e=>e.group).map(e=>e.group))];
@@ -507,10 +520,11 @@ function applyPreset(){
 
   let count=0;
   const groupId=Date.now();
+  const groupColor=nextGroupColor();
   items.forEach(it=>{
     const start=offsetDate(date,it.offset);
     const end=offsetDate(date,it.offset+it.dur-1);
-    D.plans.push({id:Date.now()+(count++),name:name+it.suffix,start,end,phase:it.phase,note:'',group:groupId,groupName:name});
+    D.plans.push({id:Date.now()+(count++),name:name+it.suffix,start,end,phase:it.phase,note:'',group:groupId,groupName:name,groupColor});
   });
   save();closePreset();
   const td=new Date(date);curYear=td.getFullYear();curMonth=td.getMonth();
